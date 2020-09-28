@@ -18,31 +18,57 @@ class PackageInstallationValid(CloudFormationLintRule):
     
     def match(self, cfn):
         """Check CloudFormation Metadata Interface Configuration"""
-        config_resource_names = ['AWS::AutoScaling::LaunchConfiguration']
-        print(self.logger)
-        self.logger.debug("hello: we in here")
+        config_resource_names = ['AWS::AutoScaling::LaunchConfiguration', 'AWS::EC2::Instance']
+
+        str_resources = 'Resources'
+        str_packages = 'packages'
+        str_config = 'config'
+        str_init = 'AWS::CloudFormation::Init'
+        str_metadata = 'Metadata'
         matches = []
 
-        strinit = 'AWS::CloudFormation::Init'
         resources = cfn.template.get(
-            'Resources', {})
+            str_resources, {})
 
         for resource_name, resource in resources.items():
             if resource.get('Type') not in config_resource_names:
                 continue
-            metadata = resource.get('Metadata')
+            
+            metadata = resource.get(str_metadata)
+
             if not metadata:
                 continue
-            initobj = metadata.get('AWS::CloudFormation::Init')
+
+            initobj = metadata.get(
+                str_init)
+
             if not initobj:
                 continue
+
             package_install = initobj.get(
-                'config', {}).get('packages')
+                str_config, {}).get(
+                str_packages)
+            
             if not package_install:
                 continue
+
             if not package_install.get('yum'):
+                path_arr = [
+                    str_resources,
+                    resource_name,
+                    str_metadata,
+                    str_init,
+                    str_config,
+                    str_packages]
+
+                path = ('/').join(
+                    path_arr)
+                
+                message = \
+                    f'{path} should have at least one of the following: (yum, apt)'
+
                 matches.append(RuleMatch(
-                    ['Resources', resource_name,'Metadata','AWS::CloudFormation::Init','config','packages'], 'this sucks'))
-                print(resource_name, resource)
+                    path_arr,
+                    message))
         return matches
  
